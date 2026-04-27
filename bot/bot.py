@@ -213,10 +213,107 @@ async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f"Hai {interaction.user.mention}!")
 
 
-@bot.tree.command(name="say", description="Bot ngulang pesan kamu.")
-@app_commands.describe(text="Pesan yang mau diulang")
-async def say(interaction: discord.Interaction, text: str):
-    await interaction.response.send_message(text)
+@bot.tree.command(
+    name="say",
+    description="[ADMIN] Suruh bot ngomong / kirim pengumuman.",
+)
+@app_commands.describe(
+    text="Pesan yang mau dikirim (pakai \\n untuk baris baru)",
+    channel="Channel tujuan (default: channel sekarang)",
+    embed="Tampilin sebagai embed pengumuman (default: tidak)",
+    title="Judul pengumuman (cuma kepake kalau embed=True)",
+    ping="Mention role/everyone (mis. @everyone, @here, atau @NamaRole)",
+)
+@app_commands.default_permissions(administrator=True)
+async def say(
+    interaction: discord.Interaction,
+    text: str,
+    channel: discord.TextChannel | None = None,
+    embed: bool = False,
+    title: str | None = None,
+    ping: str | None = None,
+):
+    if not interaction.guild or not isinstance(interaction.user, discord.Member):
+        await interaction.response.send_message(
+            "Command ini cuma bisa dipakai di server.", ephemeral=True
+        )
+        return
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message(
+            "Cuma admin server yang bisa pakai command ini.", ephemeral=True
+        )
+        return
+
+    target = channel or interaction.channel
+    if not isinstance(target, (discord.TextChannel, discord.Thread, discord.VoiceChannel)):
+        await interaction.response.send_message(
+            "Channel tujuan nggak valid.", ephemeral=True
+        )
+        return
+
+    perms = target.permissions_for(interaction.guild.me)
+    if not perms.send_messages:
+        await interaction.response.send_message(
+            f"Aku nggak punya izin kirim pesan di {target.mention}.", ephemeral=True
+        )
+        return
+    if embed and not perms.embed_links:
+        await interaction.response.send_message(
+            f"Aku butuh permission **Embed Links** di {target.mention}.", ephemeral=True
+        )
+        return
+
+    content_text = text.replace("\\n", "\n")
+
+    allowed = discord.AllowedMentions.none()
+    ping_text = ""
+    if ping:
+        ping_clean = ping.strip()
+        if ping_clean in ("@everyone", "everyone"):
+            ping_text = "@everyone"
+            allowed = discord.AllowedMentions(everyone=True)
+        elif ping_clean in ("@here", "here"):
+            ping_text = "@here"
+            allowed = discord.AllowedMentions(everyone=True)
+        else:
+            role_name = ping_clean.lstrip("@")
+            role = discord.utils.get(interaction.guild.roles, name=role_name)
+            if role:
+                ping_text = role.mention
+                allowed = discord.AllowedMentions(roles=[role])
+            else:
+                await interaction.response.send_message(
+                    f"Role `{role_name}` nggak ketemu.", ephemeral=True
+                )
+                return
+
+    try:
+        if embed:
+            announce = discord.Embed(
+                title=title or "📢 Pengumuman",
+                description=content_text[:4000],
+                color=discord.Color.gold(),
+            )
+            announce.set_footer(
+                text=f"Dikirim oleh {interaction.user.display_name}",
+                icon_url=interaction.user.display_avatar.url,
+            )
+            await target.send(content=ping_text or None, embed=announce, allowed_mentions=allowed)
+        else:
+            body = f"{ping_text}\n{content_text}" if ping_text else content_text
+            await target.send(content=body[:2000], allowed_mentions=allowed)
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            f"Gagal kirim — bot kekurangan izin di {target.mention}.", ephemeral=True
+        )
+        return
+    except discord.HTTPException as e:
+        await interaction.response.send_message(f"Gagal kirim: `{e}`", ephemeral=True)
+        return
+
+    await interaction.response.send_message(
+        f"✅ Pesan terkirim ke {target.mention}.", ephemeral=True
+    )
 
 
 @bot.tree.command(name="roll", description="Lempar dadu, format NdN (mis. 2d6).")
