@@ -128,6 +128,113 @@ class Track:
         return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:d}:{s:02d}"
 
 
+class MusicControlsView(discord.ui.View):
+    def __init__(self, player: "GuildPlayer"):
+        super().__init__(timeout=None)
+        self.player = player
+        self._sync_buttons()
+
+    def _sync_buttons(self):
+        vc = self.player.voice
+        is_paused = bool(vc and vc.is_paused())
+        self.pause_resume.label = "Resume" if is_paused else "Pause"
+        self.pause_resume.emoji = "▶️" if is_paused else "⏸️"
+        self.loop_btn.style = (
+            discord.ButtonStyle.success if self.player.loop else discord.ButtonStyle.secondary
+        )
+
+    async def _check_voice(self, interaction: discord.Interaction) -> bool:
+        if not isinstance(interaction.user, discord.Member):
+            return False
+        if not interaction.user.voice or not interaction.user.voice.channel:
+            await interaction.response.send_message(
+                "Kamu harus join voice channel dulu.", ephemeral=True
+            )
+            return False
+        vc = self.player.voice
+        if vc and interaction.user.voice.channel.id != vc.channel.id:
+            await interaction.response.send_message(
+                "Kamu harus di voice channel yang sama dengan bot.", ephemeral=True
+            )
+            return False
+        return True
+
+    @discord.ui.button(label="Pause", emoji="⏸️", style=discord.ButtonStyle.primary)
+    async def pause_resume(self, interaction: discord.Interaction, _b):
+        if not await self._check_voice(interaction):
+            return
+        vc = self.player.voice
+        if not vc or (not vc.is_playing() and not vc.is_paused()):
+            await interaction.response.send_message("Lagi nggak ada yang diputar.", ephemeral=True)
+            return
+        if vc.is_paused():
+            vc.resume()
+        else:
+            vc.pause()
+        self._sync_buttons()
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="Skip", emoji="⏭️", style=discord.ButtonStyle.primary)
+    async def skip(self, interaction: discord.Interaction, _b):
+        if not await self._check_voice(interaction):
+            return
+        vc = self.player.voice
+        if vc and vc.is_playing():
+            vc.stop()
+            await interaction.response.send_message("⏭️ Skip.", ephemeral=True)
+        else:
+            await interaction.response.send_message("Lagi nggak ada yang diputar.", ephemeral=True)
+
+    @discord.ui.button(label="Loop", emoji="🔁", style=discord.ButtonStyle.secondary)
+    async def loop_btn(self, interaction: discord.Interaction, _b):
+        if not await self._check_voice(interaction):
+            return
+        self.player.loop = not self.player.loop
+        self._sync_buttons()
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(
+            f"🔁 Loop: **{'ON' if self.player.loop else 'OFF'}**", ephemeral=True
+        )
+
+    @discord.ui.button(label="Queue", emoji="📜", style=discord.ButtonStyle.secondary)
+    async def queue_btn(self, interaction: discord.Interaction, _b):
+        p = self.player
+        if not p.current and not p.queue:
+            await interaction.response.send_message("Antrian kosong.", ephemeral=True)
+            return
+        embed = discord.Embed(title="Antrian", color=discord.Color.blurple())
+        if p.current:
+            embed.add_field(
+                name="Now Playing",
+                value=f"[{p.current.title}]({p.current.webpage_url}) — `{p.current.fmt_duration()}`",
+                inline=False,
+            )
+        if p.queue:
+            lines = []
+            for i, t in enumerate(list(p.queue)[:10], start=1):
+                lines.append(f"`{i}.` [{t.title}]({t.webpage_url}) — `{t.fmt_duration()}`")
+            embed.add_field(
+                name=f"Selanjutnya ({len(p.queue)})", value="\n".join(lines), inline=False
+            )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @discord.ui.button(label="Stop", emoji="⏹️", style=discord.ButtonStyle.danger)
+    async def stop_btn(self, interaction: discord.Interaction, _b):
+        if not await self._check_voice(interaction):
+            return
+        self.player.queue.clear()
+        self.player.loop = False
+        vc = self.player.voice
+        if vc:
+            vc.stop()
+            await vc.disconnect()
+        for c in self.children:
+            if isinstance(c, discord.ui.Button):
+                c.disabled = True
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send("⏹️ Diberhentiin & keluar dari voice.", ephemeral=True)
+
+
 class GuildPlayer:
     def __init__(self, bot: commands.Bot, guild: discord.Guild):
         self.bot = bot
@@ -139,6 +246,7 @@ class GuildPlayer:
         self._next = asyncio.Event()
         self._task = bot.loop.create_task(self._player_loop())
         self.text_channel: discord.abc.MessageableChannel | None = None
+        self._np_message: discord.Message | None = None
 
     @property
     def voice(self) -> discord.VoiceClient | None:
@@ -174,7 +282,13 @@ class GuildPlayer:
                     embed.add_field(name="Durasi", value=track.fmt_duration())
                     embed.add_field(name="Diminta oleh", value=track.requester.mention)
                     try:
-                        await self.text_channel.send(embed=embed)
+                        if self._np_message:
+                            try:
+                                await self._np_message.edit(view=None)
+                            except discord.HTTPException:
+                                pass
+                        view = MusicControlsView(self)
+                        self._np_message = await self.text_channel.send(embed=embed, view=view)
                     except discord.HTTPException:
                         pass
                 await self._next.wait()
