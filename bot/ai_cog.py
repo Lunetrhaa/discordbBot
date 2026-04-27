@@ -65,6 +65,23 @@ class AICog(commands.Cog):
         if len(prompt) > 1000:
             await interaction.response.send_message("Prompt maks 1000 karakter.", ephemeral=True)
             return
+        if interaction.guild and interaction.channel and isinstance(
+            interaction.channel, (discord.TextChannel, discord.Thread, discord.VoiceChannel)
+        ):
+            me = interaction.guild.me
+            perms = interaction.channel.permissions_for(me)
+            missing = []
+            if not perms.attach_files:
+                missing.append("Attach Files")
+            if not perms.embed_links:
+                missing.append("Embed Links")
+            if missing:
+                await interaction.response.send_message(
+                    f"Aku butuh permission **{', '.join(missing)}** di channel ini buat ngirim gambar. "
+                    "Minta admin server untuk ngasih izinnya ke role bot.",
+                    ephemeral=True,
+                )
+                return
         await interaction.response.defer(thinking=True)
         try:
             data = await asyncio.wait_for(
@@ -87,7 +104,20 @@ class AICog(commands.Cog):
         embed.add_field(name="Kualitas", value=quality_val, inline=True)
         embed.add_field(name="Diminta oleh", value=interaction.user.mention, inline=True)
         embed.set_image(url="attachment://imagine.png")
-        await interaction.followup.send(embed=embed, file=file)
+        try:
+            await interaction.followup.send(embed=embed, file=file)
+        except discord.Forbidden as e:
+            log.exception("Forbidden when sending image")
+            await interaction.followup.send(
+                f"Gagal kirim gambar: bot nggak punya izin attach files di sini. (`{e}`)"
+            )
+        except discord.HTTPException as e:
+            log.exception("HTTPException when sending image")
+            file2 = discord.File(io.BytesIO(data), filename="imagine.png")
+            try:
+                await interaction.followup.send(content=f"🎨 **{prompt[:200]}**", file=file2)
+            except Exception:
+                await interaction.followup.send(f"Gagal kirim gambar: `{e}`")
 
 
 async def setup(bot: commands.Bot):
