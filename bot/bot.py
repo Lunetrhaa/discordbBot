@@ -1,9 +1,9 @@
 import os
 import random
 import logging
-from datetime import datetime, timezone
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 logging.basicConfig(
@@ -16,66 +16,73 @@ TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
 if not TOKEN:
     raise RuntimeError("DISCORD_BOT_TOKEN environment variable is not set.")
 
-COMMAND_PREFIX = os.environ.get("DISCORD_COMMAND_PREFIX", "!")
-
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents, help_command=None)
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
 
 TRUTHS = [
-    "What's the most embarrassing thing you've done in the last year?",
-    "What's a secret you've never told anyone in this server?",
-    "Who in this server would you trust with your phone for a day?",
-    "What's the weirdest dream you've had recently?",
-    "What's the worst lie you've ever told a parent?",
-    "What's something you pretend to like just to fit in?",
-    "What's the last thing you searched on your phone?",
-    "What's the most childish thing you still do?",
-    "What's a talent you wish you had?",
-    "Have you ever cheated on a test? What happened?",
-    "What's your biggest irrational fear?",
-    "What's the worst gift you've ever received?",
-    "What's something you've done that you'd never tell your parents?",
-    "Who was your first crush?",
-    "What's the most trouble you've ever been in?",
-    "What's a habit you have that you're embarrassed about?",
-    "What's your most controversial opinion about food?",
-    "If you had to delete one app from your phone forever, what would it be?",
-    "What's the last text you sent and to whom?",
-    "What's the longest you've gone without showering?",
+    "Apa hal paling memalukan yang pernah kamu lakukan setahun terakhir?",
+    "Rahasia apa yang belum pernah kamu ceritakan ke siapa pun di server ini?",
+    "Siapa di server ini yang paling kamu percaya untuk pegang HP-mu seharian?",
+    "Mimpi paling aneh yang pernah kamu alami akhir-akhir ini apa?",
+    "Kebohongan terburuk apa yang pernah kamu katakan ke orang tuamu?",
+    "Apa hal yang sebenarnya kamu nggak suka tapi kamu pura-pura suka biar bisa nyambung?",
+    "Apa yang terakhir kamu cari di HP-mu?",
+    "Hal kekanak-kanakan apa yang masih sering kamu lakukan?",
+    "Bakat apa yang kamu harap kamu punya?",
+    "Pernah nggak nyontek pas ulangan? Cerita dong!",
+    "Ketakutan paling nggak masuk akal yang kamu punya apa?",
+    "Hadiah terburuk yang pernah kamu terima apa?",
+    "Apa hal yang pernah kamu lakukan yang nggak bakal kamu ceritain ke orang tuamu?",
+    "Siapa cinta pertamamu?",
+    "Masalah paling besar yang pernah kamu buat apa?",
+    "Kebiasaan apa yang kamu malu sendiri kalau orang tahu?",
+    "Opini paling kontroversialmu soal makanan apa?",
+    "Kalau harus hapus satu aplikasi di HP-mu selamanya, aplikasi apa?",
+    "Pesan terakhir yang kamu kirim ke siapa dan isinya apa?",
+    "Berapa lama paling lama kamu pernah nggak mandi?",
+    "Crush rahasia kamu di server ini siapa?",
+    "Pernah nggak suka sama temennya temen sendiri?",
+    "Kapan terakhir kali kamu nangis dan kenapa?",
+    "Hal paling memalukan di galeri HP-mu apa?",
+    "Pernah nggak ngomongin orang di server ini di belakangnya?",
 ]
 
 DARES = [
-    "Send the 5th photo in your camera roll to this channel.",
-    "Speak in a British accent for the next 3 messages.",
-    "DM someone in this server a compliment right now.",
-    "Type your next message with your eyes closed — no edits.",
-    "Change your nickname to something the next person picks for 10 minutes.",
-    "Post the most recent meme you saved.",
-    "Send a voice message of you singing the chorus of any song.",
-    "Tell a joke. If nobody reacts, do another dare.",
-    "Type out the alphabet using only emojis.",
-    "Set your status to 'I lost a dare' for 1 hour.",
-    "Share an embarrassing childhood photo (or describe one in detail).",
-    "Do 10 push-ups and post a video or proof.",
-    "Send a screenshot of your home screen.",
-    "Talk like a pirate for the next 5 minutes.",
-    "Read your last sent message in a dramatic voice (post a voice clip).",
-    "Replace your profile picture with a cartoon character for 24 hours.",
-    "Write a 2-line poem about the person above you in chat.",
-    "Send the last song you listened to.",
-    "Spell your name backwards and use it as your nickname for 10 minutes.",
-    "Post a selfie making the silliest face you can.",
+    "Kirim foto ke-5 dari galeri HP-mu ke channel ini.",
+    "Ngomong pakai aksen Inggris untuk 3 pesan berikutnya.",
+    "DM seseorang di server ini sebuah pujian sekarang juga.",
+    "Ketik pesan berikutnya dengan mata tertutup — nggak boleh diedit.",
+    "Ganti nickname-mu jadi apa pun yang dipilih orang berikutnya selama 10 menit.",
+    "Posting meme terakhir yang kamu simpan.",
+    "Kirim voice note nyanyi reff lagu apa pun.",
+    "Cerita lelucon. Kalau nggak ada yang react, dare lagi.",
+    "Ketik abjad A-Z pakai emoji semua.",
+    "Set status Discord-mu jadi 'Aku kalah dare' selama 1 jam.",
+    "Ceritain dengan detail satu foto masa kecil yang memalukan.",
+    "Push-up 10 kali dan posting bukti video atau foto.",
+    "Kirim screenshot home screen HP-mu.",
+    "Ngomong kayak bajak laut selama 5 menit ke depan.",
+    "Baca pesan terakhirmu pakai suara dramatis (kirim voice note).",
+    "Ganti foto profilmu jadi karakter kartun selama 24 jam.",
+    "Buat puisi 2 baris tentang orang di atas chat.",
+    "Kirim lagu terakhir yang kamu dengerin.",
+    "Eja namamu terbalik dan pakai jadi nickname selama 10 menit.",
+    "Posting selfie dengan ekspresi paling konyol yang kamu bisa.",
+    "Tag random 3 orang di server ini dan bilang kenapa kamu suka mereka.",
+    "Tiru suara hewan favoritmu lewat voice note.",
+    "Kirim emoji terakhir yang kamu pakai 5 kali berturut-turut.",
+    "Ceritain crush pertamamu dalam 1 kalimat.",
+    "Posting screenshot percakapan WA paling random kamu (sensor nama).",
 ]
 
 
 class TruthOrDareView(discord.ui.View):
-    def __init__(self, requester: discord.abc.User):
+    def __init__(self):
         super().__init__(timeout=180)
-        self.requester = requester
         self.message: discord.Message | None = None
 
     async def on_timeout(self):
@@ -98,8 +105,10 @@ class TruthOrDareView(discord.ui.View):
             color = discord.Color.red()
             title = "Dare"
         embed = discord.Embed(title=title, description=prompt, color=color)
-        embed.set_footer(text=f"For {interaction.user.display_name}")
-        await interaction.response.send_message(embed=embed, view=TruthOrDareView(interaction.user))
+        embed.set_footer(text=f"Untuk {interaction.user.display_name}")
+        view = TruthOrDareView()
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     @discord.ui.button(label="Truth", style=discord.ButtonStyle.primary, emoji="\U0001F914")
     async def truth_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -118,79 +127,73 @@ class TruthOrDareView(discord.ui.View):
 async def on_ready():
     log.info("Logged in as %s (id=%s)", bot.user, bot.user.id if bot.user else "?")
     log.info("Connected to %d guild(s).", len(bot.guilds))
-    activity = discord.Game(name=f"Lunethra.gg | {COMMAND_PREFIX}help")
+    activity = discord.Game(name="Lunethra.gg | /help")
     await bot.change_presence(status=discord.Status.online, activity=activity)
+    for guild in bot.guilds:
+        try:
+            bot.tree.copy_global_to(guild=guild)
+            synced = await bot.tree.sync(guild=guild)
+            log.info("Synced %d slash command(s) to guild %s.", len(synced), guild.name)
+        except Exception:
+            log.exception("Failed to sync slash commands to guild %s", guild.name)
 
 
-@bot.event
-async def on_command_error(ctx: commands.Context, error: commands.CommandError):
-    if isinstance(error, commands.CommandNotFound):
-        return
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"Missing argument: `{error.param.name}`. See `{COMMAND_PREFIX}help`.")
-        return
-    if isinstance(error, commands.BadArgument):
-        await ctx.send(f"Invalid argument: {error}")
-        return
-    log.exception("Unhandled command error", exc_info=error)
-    await ctx.send("Something went wrong running that command.")
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        msg = "Kamu nggak punya izin untuk pakai command ini."
+    elif isinstance(error, app_commands.CommandOnCooldown):
+        msg = f"Pelan-pelan, coba lagi dalam {error.retry_after:.1f}s."
+    else:
+        log.exception("Unhandled app command error", exc_info=error)
+        msg = "Ada yang error pas jalanin command itu."
+    if interaction.response.is_done():
+        await interaction.followup.send(msg, ephemeral=True)
+    else:
+        await interaction.response.send_message(msg, ephemeral=True)
 
 
-@bot.command(name="help")
-async def help_cmd(ctx: commands.Context):
-    p = COMMAND_PREFIX
+@bot.tree.command(name="help", description="Tampilkan daftar command.")
+async def help_cmd(interaction: discord.Interaction):
     embed = discord.Embed(
         title="Bot Commands",
-        description=f"Prefix all commands with `{p}`",
+        description="Semua command pakai prefix `/`",
         color=discord.Color.blurple(),
     )
-    embed.add_field(name=f"{p}ping", value="Show bot latency.", inline=False)
-    embed.add_field(name=f"{p}hello", value="Friendly greeting.", inline=False)
-    embed.add_field(name=f"{p}say <text>", value="Repeat your message.", inline=False)
-    embed.add_field(name=f"{p}roll [NdN]", value="Roll dice (e.g. `2d6`). Defaults to `1d6`.", inline=False)
-    embed.add_field(name=f"{p}flip", value="Flip a coin.", inline=False)
-    embed.add_field(name=f"{p}choose <a> <b> ...", value="Pick one option at random.", inline=False)
-    embed.add_field(name=f"{p}avatar [@user]", value="Show a user's avatar.", inline=False)
-    embed.add_field(name=f"{p}userinfo [@user]", value="Show info about a user.", inline=False)
-    embed.add_field(name=f"{p}serverinfo", value="Show info about this server.", inline=False)
-    embed.add_field(name=f"{p}clear <n>", value="Delete the last n messages (manage messages).", inline=False)
-    embed.add_field(name=f"{p}tod", value="Start a Truth or Dare game with buttons.", inline=False)
-    await ctx.send(embed=embed)
+    embed.add_field(name="/ping", value="Cek latency bot.", inline=False)
+    embed.add_field(name="/hello", value="Sapaan ramah.", inline=False)
+    embed.add_field(name="/say", value="Bot ngulang pesan kamu.", inline=False)
+    embed.add_field(name="/roll", value="Lempar dadu (mis. `2d6`). Default `1d6`.", inline=False)
+    embed.add_field(name="/flip", value="Lempar koin.", inline=False)
+    embed.add_field(name="/choose", value="Pilih satu opsi acak (pisahkan dengan koma).", inline=False)
+    embed.add_field(name="/avatar", value="Tampilkan avatar user.", inline=False)
+    embed.add_field(name="/userinfo", value="Info user.", inline=False)
+    embed.add_field(name="/serverinfo", value="Info server.", inline=False)
+    embed.add_field(name="/clear", value="Hapus n pesan terakhir (perlu izin Manage Messages).", inline=False)
+    embed.add_field(name="/tod", value="Mulai game Truth or Dare dengan tombol.", inline=False)
+    await interaction.response.send_message(embed=embed)
 
 
-@bot.command(name="tod", aliases=["truthordare"])
-async def tod(ctx: commands.Context):
-    embed = discord.Embed(
-        title="Truth or Dare",
-        description="Pick your poison. Click a button below.",
-        color=discord.Color.purple(),
-    )
-    embed.add_field(name="Truth", value="Answer an honest question.", inline=True)
-    embed.add_field(name="Dare", value="Complete a challenge.", inline=True)
-    embed.add_field(name="Random", value="Let fate decide.", inline=True)
-    embed.set_footer(text=f"Started by {ctx.author.display_name}")
-    view = TruthOrDareView(ctx.author)
-    view.message = await ctx.send(embed=embed, view=view)
-
-
-@bot.command(name="ping")
-async def ping(ctx: commands.Context):
+@bot.tree.command(name="ping", description="Cek latency bot.")
+async def ping(interaction: discord.Interaction):
     latency_ms = round(bot.latency * 1000)
-    await ctx.send(f"Pong! `{latency_ms}ms`")
+    await interaction.response.send_message(f"Pong! `{latency_ms}ms`")
 
 
-@bot.command(name="hello")
-async def hello(ctx: commands.Context):
-    await ctx.send(f"Hi {ctx.author.mention}!")
+@bot.tree.command(name="hello", description="Sapaan ramah.")
+async def hello(interaction: discord.Interaction):
+    await interaction.response.send_message(f"Hai {interaction.user.mention}!")
 
 
-@bot.command(name="say")
-async def say(ctx: commands.Context, *, text: str):
-    await ctx.send(text)
+@bot.tree.command(name="say", description="Bot ngulang pesan kamu.")
+@app_commands.describe(text="Pesan yang mau diulang")
+async def say(interaction: discord.Interaction, text: str):
+    await interaction.response.send_message(text)
 
 
-@bot.command(name="roll")
-async def roll(ctx: commands.Context, dice: str = "1d6"):
+@bot.tree.command(name="roll", description="Lempar dadu, format NdN (mis. 2d6).")
+@app_commands.describe(dice="Format dadu, default 1d6")
+async def roll(interaction: discord.Interaction, dice: str = "1d6"):
     try:
         count_str, sides_str = dice.lower().split("d", 1)
         count = int(count_str) if count_str else 1
@@ -198,55 +201,67 @@ async def roll(ctx: commands.Context, dice: str = "1d6"):
         if not (1 <= count <= 100) or not (2 <= sides <= 1000):
             raise ValueError
     except ValueError:
-        await ctx.send("Use the format `NdN`, e.g. `2d6`. Limits: 1–100 dice, 2–1000 sides.")
+        await interaction.response.send_message(
+            "Pakai format `NdN`, mis. `2d6`. Batas: 1–100 dadu, 2–1000 sisi.",
+            ephemeral=True,
+        )
         return
     rolls = [random.randint(1, sides) for _ in range(count)]
     total = sum(rolls)
     detail = ", ".join(str(r) for r in rolls)
-    await ctx.send(f"{ctx.author.mention} rolled **{total}** ({detail})")
+    await interaction.response.send_message(
+        f"{interaction.user.mention} dapet **{total}** ({detail})"
+    )
 
 
-@bot.command(name="flip")
-async def flip(ctx: commands.Context):
-    await ctx.send(random.choice(["Heads", "Tails"]))
+@bot.tree.command(name="flip", description="Lempar koin.")
+async def flip(interaction: discord.Interaction):
+    await interaction.response.send_message(random.choice(["Heads", "Tails"]))
 
 
-@bot.command(name="choose")
-async def choose(ctx: commands.Context, *choices: str):
-    if len(choices) < 2:
-        await ctx.send("Give me at least two options to choose from.")
+@bot.tree.command(name="choose", description="Pilih satu opsi acak.")
+@app_commands.describe(options="Opsi yang dipisahkan dengan koma, mis. `pizza, taco, sushi`")
+async def choose(interaction: discord.Interaction, options: str):
+    parts = [p.strip() for p in options.split(",") if p.strip()]
+    if len(parts) < 2:
+        await interaction.response.send_message(
+            "Kasih minimal dua opsi (pisahkan dengan koma).", ephemeral=True
+        )
         return
-    await ctx.send(f"I pick: **{random.choice(choices)}**")
+    await interaction.response.send_message(f"Aku pilih: **{random.choice(parts)}**")
 
 
-@bot.command(name="avatar")
-async def avatar(ctx: commands.Context, member: discord.Member | None = None):
-    target = member or ctx.author
-    embed = discord.Embed(title=f"{target.display_name}'s avatar", color=discord.Color.blurple())
+@bot.tree.command(name="avatar", description="Tampilkan avatar user.")
+@app_commands.describe(user="User yang mau dilihat avatarnya (default: kamu)")
+async def avatar(interaction: discord.Interaction, user: discord.Member | None = None):
+    target = user or interaction.user
+    embed = discord.Embed(title=f"Avatar {target.display_name}", color=discord.Color.blurple())
     embed.set_image(url=target.display_avatar.url)
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 
-@bot.command(name="userinfo")
-async def userinfo(ctx: commands.Context, member: discord.Member | None = None):
-    target = member or ctx.author
+@bot.tree.command(name="userinfo", description="Info user.")
+@app_commands.describe(user="User yang mau dilihat (default: kamu)")
+async def userinfo(interaction: discord.Interaction, user: discord.Member | None = None):
+    target = user or interaction.user
     embed = discord.Embed(title=str(target), color=discord.Color.green())
     embed.set_thumbnail(url=target.display_avatar.url)
     embed.add_field(name="ID", value=str(target.id), inline=False)
     embed.add_field(name="Created", value=target.created_at.strftime("%Y-%m-%d %H:%M UTC"), inline=False)
-    if target.joined_at:
+    if isinstance(target, discord.Member) and target.joined_at:
         embed.add_field(name="Joined", value=target.joined_at.strftime("%Y-%m-%d %H:%M UTC"), inline=False)
-    roles = [r.mention for r in target.roles if r.name != "@everyone"]
-    if roles:
-        embed.add_field(name=f"Roles ({len(roles)})", value=" ".join(roles), inline=False)
-    await ctx.send(embed=embed)
+        roles = [r.mention for r in target.roles if r.name != "@everyone"]
+        if roles:
+            embed.add_field(name=f"Roles ({len(roles)})", value=" ".join(roles), inline=False)
+    await interaction.response.send_message(embed=embed)
 
 
-@bot.command(name="serverinfo")
-@commands.guild_only()
-async def serverinfo(ctx: commands.Context):
-    g = ctx.guild
-    assert g is not None
+@bot.tree.command(name="serverinfo", description="Info server ini.")
+async def serverinfo(interaction: discord.Interaction):
+    g = interaction.guild
+    if g is None:
+        await interaction.response.send_message("Command ini cuma bisa dipakai di server.", ephemeral=True)
+        return
     embed = discord.Embed(title=g.name, color=discord.Color.gold())
     if g.icon:
         embed.set_thumbnail(url=g.icon.url)
@@ -256,22 +271,36 @@ async def serverinfo(ctx: commands.Context):
     embed.add_field(name="Channels", value=str(len(g.channels)), inline=True)
     embed.add_field(name="Roles", value=str(len(g.roles)), inline=True)
     embed.add_field(name="Created", value=g.created_at.strftime("%Y-%m-%d"), inline=False)
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 
-@bot.command(name="clear")
-@commands.has_permissions(manage_messages=True)
-@commands.guild_only()
-async def clear(ctx: commands.Context, amount: int):
-    if not isinstance(ctx.channel, (discord.TextChannel, discord.Thread)):
-        await ctx.send("Can only clear in text channels.")
+@bot.tree.command(name="clear", description="Hapus n pesan terakhir.")
+@app_commands.describe(amount="Jumlah pesan (1-100)")
+@app_commands.default_permissions(manage_messages=True)
+async def clear(interaction: discord.Interaction, amount: app_commands.Range[int, 1, 100]):
+    channel = interaction.channel
+    if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+        await interaction.response.send_message("Cuma bisa di text channel.", ephemeral=True)
         return
-    if not (1 <= amount <= 100):
-        await ctx.send("Pick a number between 1 and 100.")
-        return
-    deleted = await ctx.channel.purge(limit=amount + 1)
-    confirm = await ctx.send(f"Deleted {len(deleted) - 1} message(s).")
-    await confirm.delete(delay=3)
+    await interaction.response.defer(ephemeral=True)
+    deleted = await channel.purge(limit=amount)
+    await interaction.followup.send(f"Berhasil hapus {len(deleted)} pesan.", ephemeral=True)
+
+
+@bot.tree.command(name="tod", description="Mulai game Truth or Dare dengan tombol.")
+async def tod(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="Truth or Dare",
+        description="Pilih nasibmu. Klik salah satu tombol di bawah.",
+        color=discord.Color.purple(),
+    )
+    embed.add_field(name="Truth", value="Jawab pertanyaan jujur.", inline=True)
+    embed.add_field(name="Dare", value="Selesaikan tantangan.", inline=True)
+    embed.add_field(name="Random", value="Biar takdir yang pilih.", inline=True)
+    embed.set_footer(text=f"Dimulai oleh {interaction.user.display_name}")
+    view = TruthOrDareView()
+    await interaction.response.send_message(embed=embed, view=view)
+    view.message = await interaction.original_response()
 
 
 if __name__ == "__main__":
