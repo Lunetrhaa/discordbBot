@@ -25,11 +25,100 @@ intents.members = True
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents, help_command=None)
 
 
+TRUTHS = [
+    "What's the most embarrassing thing you've done in the last year?",
+    "What's a secret you've never told anyone in this server?",
+    "Who in this server would you trust with your phone for a day?",
+    "What's the weirdest dream you've had recently?",
+    "What's the worst lie you've ever told a parent?",
+    "What's something you pretend to like just to fit in?",
+    "What's the last thing you searched on your phone?",
+    "What's the most childish thing you still do?",
+    "What's a talent you wish you had?",
+    "Have you ever cheated on a test? What happened?",
+    "What's your biggest irrational fear?",
+    "What's the worst gift you've ever received?",
+    "What's something you've done that you'd never tell your parents?",
+    "Who was your first crush?",
+    "What's the most trouble you've ever been in?",
+    "What's a habit you have that you're embarrassed about?",
+    "What's your most controversial opinion about food?",
+    "If you had to delete one app from your phone forever, what would it be?",
+    "What's the last text you sent and to whom?",
+    "What's the longest you've gone without showering?",
+]
+
+DARES = [
+    "Send the 5th photo in your camera roll to this channel.",
+    "Speak in a British accent for the next 3 messages.",
+    "DM someone in this server a compliment right now.",
+    "Type your next message with your eyes closed — no edits.",
+    "Change your nickname to something the next person picks for 10 minutes.",
+    "Post the most recent meme you saved.",
+    "Send a voice message of you singing the chorus of any song.",
+    "Tell a joke. If nobody reacts, do another dare.",
+    "Type out the alphabet using only emojis.",
+    "Set your status to 'I lost a dare' for 1 hour.",
+    "Share an embarrassing childhood photo (or describe one in detail).",
+    "Do 10 push-ups and post a video or proof.",
+    "Send a screenshot of your home screen.",
+    "Talk like a pirate for the next 5 minutes.",
+    "Read your last sent message in a dramatic voice (post a voice clip).",
+    "Replace your profile picture with a cartoon character for 24 hours.",
+    "Write a 2-line poem about the person above you in chat.",
+    "Send the last song you listened to.",
+    "Spell your name backwards and use it as your nickname for 10 minutes.",
+    "Post a selfie making the silliest face you can.",
+]
+
+
+class TruthOrDareView(discord.ui.View):
+    def __init__(self, requester: discord.abc.User):
+        super().__init__(timeout=180)
+        self.requester = requester
+        self.message: discord.Message | None = None
+
+    async def on_timeout(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except discord.HTTPException:
+                pass
+
+    async def _respond(self, interaction: discord.Interaction, kind: str):
+        if kind == "truth":
+            prompt = random.choice(TRUTHS)
+            color = discord.Color.blue()
+            title = "Truth"
+        else:
+            prompt = random.choice(DARES)
+            color = discord.Color.red()
+            title = "Dare"
+        embed = discord.Embed(title=title, description=prompt, color=color)
+        embed.set_footer(text=f"For {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed, view=TruthOrDareView(interaction.user))
+
+    @discord.ui.button(label="Truth", style=discord.ButtonStyle.primary, emoji="\U0001F914")
+    async def truth_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._respond(interaction, "truth")
+
+    @discord.ui.button(label="Dare", style=discord.ButtonStyle.danger, emoji="\U0001F525")
+    async def dare_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._respond(interaction, "dare")
+
+    @discord.ui.button(label="Random", style=discord.ButtonStyle.secondary, emoji="\U0001F3B2")
+    async def random_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._respond(interaction, random.choice(["truth", "dare"]))
+
+
 @bot.event
 async def on_ready():
     log.info("Logged in as %s (id=%s)", bot.user, bot.user.id if bot.user else "?")
     log.info("Connected to %d guild(s).", len(bot.guilds))
-    activity = discord.Game(name=f"{COMMAND_PREFIX}help")
+    activity = discord.Game(name=f"Lunethra.gg | {COMMAND_PREFIX}help")
     await bot.change_presence(status=discord.Status.online, activity=activity)
 
 
@@ -65,7 +154,23 @@ async def help_cmd(ctx: commands.Context):
     embed.add_field(name=f"{p}userinfo [@user]", value="Show info about a user.", inline=False)
     embed.add_field(name=f"{p}serverinfo", value="Show info about this server.", inline=False)
     embed.add_field(name=f"{p}clear <n>", value="Delete the last n messages (manage messages).", inline=False)
+    embed.add_field(name=f"{p}tod", value="Start a Truth or Dare game with buttons.", inline=False)
     await ctx.send(embed=embed)
+
+
+@bot.command(name="tod", aliases=["truthordare"])
+async def tod(ctx: commands.Context):
+    embed = discord.Embed(
+        title="Truth or Dare",
+        description="Pick your poison. Click a button below.",
+        color=discord.Color.purple(),
+    )
+    embed.add_field(name="Truth", value="Answer an honest question.", inline=True)
+    embed.add_field(name="Dare", value="Complete a challenge.", inline=True)
+    embed.add_field(name="Random", value="Let fate decide.", inline=True)
+    embed.set_footer(text=f"Started by {ctx.author.display_name}")
+    view = TruthOrDareView(ctx.author)
+    view.message = await ctx.send(embed=embed, view=view)
 
 
 @bot.command(name="ping")
