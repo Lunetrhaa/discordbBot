@@ -25,3 +25,12 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Discord Bot
+
+- Code: `bot/bot.py` (Python 3.11, `discord.py`)
+- Workflow: `Discord Bot` — runs `python -u bot/bot.py`
+- Token secret: `DISCORD_BOT_TOKEN`
+- Default command prefix: `!` (override via `DISCORD_COMMAND_PREFIX`)
+- Built-in commands: `help`, `ping`, `hello`, `say`, `roll`, `flip`, `choose`, `avatar`, `userinfo`, `serverinfo`, `clear`
+- Requires "Message Content Intent" enabled in the Discord Developer Portal.
