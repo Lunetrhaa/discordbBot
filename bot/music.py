@@ -1,5 +1,9 @@
 import asyncio
+import json
 import logging
+import re
+import urllib.parse
+import urllib.request
 from collections import deque
 from dataclasses import dataclass
 
@@ -17,6 +21,13 @@ YTDL_OPTS = {
     "default_search": "ytsearch",
     "source_address": "0.0.0.0",
     "extract_flat": False,
+    "http_headers": {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        )
+    },
 }
 
 FFMPEG_OPTS = {
@@ -26,11 +37,84 @@ FFMPEG_OPTS = {
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTS)
 
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+
+
+def _http_get(url: str, timeout: int = 10) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read().decode("utf-8", errors="ignore")
+
+
+def _resolve_spotify(url: str) -> str:
+    try:
+        oembed_url = "https://open.spotify.com/oembed?url=" + urllib.parse.quote(url, safe="")
+        data = json.loads(_http_get(oembed_url))
+        title = data.get("title", "").strip()
+        if title:
+            return title
+    except Exception:
+        log.warning("Spotify oembed failed, falling back to HTML scrape", exc_info=True)
+    try:
+        html = _http_get(url)
+        m_title = re.search(r'<meta property="og:title" content="([^"]+)"', html)
+        m_desc = re.search(r'<meta property="og:description" content="([^"]+)"', html)
+        title = (m_title.group(1) if m_title else "").strip()
+        desc = (m_desc.group(1) if m_desc else "").strip()
+        artist = ""
+        m_artist = re.search(r"Song[^·•]+[·•]\s*([^·•]+?)(?:\s*[·•]|$)", desc)
+        if m_artist:
+            artist = m_artist.group(1).strip()
+        elif " · " in desc:
+            artist = desc.split(" · ", 1)[0].strip()
+        return f"{title} {artist}".strip() or url
+    except Exception:
+        log.exception("Spotify scrape failed")
+        return url
+
+
+def _resolve_apple_music(url: str) -> str:
+    try:
+        html = _http_get(url)
+        m = re.search(r'<meta property="og:title" content="([^"]+)"', html)
+        title = m.group(1).strip() if m else ""
+        title = re.sub(r"\s*[-–]\s*Apple Music$", "", title)
+        title = re.sub(r"\s*on Apple Music$", "", title)
+        m2 = re.search(r'<meta name="apple:title" content="([^"]+)"', html)
+        if not title and m2:
+            title = m2.group(1).strip()
+        m3 = re.search(r'<meta name="description" content="([^"]+)"', html)
+        artist = ""
+        if m3:
+            d = m3.group(1)
+            ma = re.search(r"by\s+(.+?)(?:\.|$|\s+on\s+Apple)", d)
+            if ma:
+                artist = ma.group(1).strip()
+        return f"{title} {artist}".strip() or url
+    except Exception:
+        log.exception("Apple Music scrape failed")
+        return url
+
+
+def resolve_query(query: str) -> str:
+    """Turn any URL or string into something yt-dlp can search/play."""
+    q = query.strip()
+    if "spotify.com" in q or q.startswith("spotify:"):
+        if q.startswith("spotify:track:"):
+            track_id = q.split(":")[-1]
+            q = f"https://open.spotify.com/track/{track_id}"
+        return _resolve_spotify(q)
+    if "music.apple.com" in q:
+        return _resolve_apple_music(q)
+    return q  # YouTube, SoundCloud, Bandcamp etc. handled by yt-dlp directly
+
 
 @dataclass
 class Track:
     title: str
-    url: str
     stream_url: str
     duration: int | None
     requester: discord.abc.User
@@ -108,9 +192,9 @@ class GuildPlayer:
         return self.queue.popleft()
 
     async def _destroy(self):
-        cog: "Music" | None = self.bot.get_cog("Music")  # type: ignore[assignment]
-        if cog:
-            cog.players.pop(self.guild.id, None)
+        cog = self.bot.get_cog("Music")
+        if cog and hasattr(cog, "players"):
+            cog.players.pop(self.guild.id, None)  # type: ignore[attr-defined]
         if not self._task.done():
             self._task.cancel()
 
@@ -118,6 +202,8 @@ class GuildPlayer:
 def _extract(query: str) -> dict:
     info = ytdl.extract_info(query, download=False)
     if "entries" in info:
+        if not info["entries"]:
+            raise RuntimeError("No results found")
         info = info["entries"][0]
     return info
 
@@ -134,6 +220,16 @@ class Music(commands.Cog):
             self.players[guild.id] = player
         return player
 
+    async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
+        if isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send(f"Argumen kurang: `{error.param.name}`. Cek `m/help`.")
+            return
+        log.exception("Music command error", exc_info=error)
+        try:
+            await ctx.send(f"Error: `{error}`")
+        except discord.HTTPException:
+            pass
+
     async def ensure_voice(self, ctx: commands.Context) -> discord.VoiceClient | None:
         if not ctx.guild:
             await ctx.send("Command ini cuma bisa dipakai di server.")
@@ -142,12 +238,21 @@ class Music(commands.Cog):
             await ctx.send("Kamu harus join voice channel dulu.")
             return None
         channel = ctx.author.voice.channel
+        perms = channel.permissions_for(ctx.guild.me)
+        if not perms.connect or not perms.speak:
+            await ctx.send("Aku nggak punya izin untuk join atau ngomong di voice channel kamu.")
+            return None
         vc = ctx.guild.voice_client
         if isinstance(vc, discord.VoiceClient):
             if vc.channel.id != channel.id:
                 await vc.move_to(channel)
             return vc
-        return await channel.connect()
+        try:
+            return await channel.connect(timeout=15.0, reconnect=True)
+        except Exception as e:
+            log.exception("Failed to connect to voice")
+            await ctx.send(f"Gagal join voice: `{e}`")
+            return None
 
     @commands.command(name="play", aliases=["p"])
     async def play(self, ctx: commands.Context, *, query: str):
@@ -155,19 +260,19 @@ class Music(commands.Cog):
         if not vc or not ctx.guild:
             return
         async with ctx.typing():
+            search = await asyncio.to_thread(resolve_query, query)
             try:
-                info = await asyncio.to_thread(_extract, query)
+                info = await asyncio.to_thread(_extract, search)
             except Exception as e:
                 log.exception("yt-dlp failed")
-                await ctx.send(f"Gagal ambil lagu: `{e}`")
+                await ctx.send(f"Gagal ambil lagu untuk `{query}`: `{e}`")
                 return
         track = Track(
             title=info.get("title", "Unknown"),
-            url=info.get("url"),
             stream_url=info["url"],
             duration=info.get("duration"),
             requester=ctx.author,
-            webpage_url=info.get("webpage_url", query),
+            webpage_url=info.get("webpage_url", search),
         )
         player = self.get_player(ctx.guild)
         player.text_channel = ctx.channel
@@ -320,10 +425,10 @@ class Music(commands.Cog):
         p = "m/"
         embed = discord.Embed(
             title="Music Commands",
-            description=f"Prefix: `{p}`",
+            description=f"Prefix: `{p}` · Sumber: YouTube, SoundCloud, Bandcamp, Spotify URL, Apple Music URL, atau pencarian bebas",
             color=discord.Color.purple(),
         )
-        embed.add_field(name=f"{p}play <query>", value="Putar lagu / tambah ke antrian (alias: `p`).", inline=False)
+        embed.add_field(name=f"{p}play <query/URL>", value="Putar lagu / tambah ke antrian (alias: `p`).", inline=False)
         embed.add_field(name=f"{p}skip", value="Skip lagu sekarang (alias: `s`).", inline=False)
         embed.add_field(name=f"{p}stop", value="Stop & kosongin antrian.", inline=False)
         embed.add_field(name=f"{p}pause / {p}resume", value="Pause / lanjutin pemutaran.", inline=False)
@@ -338,3 +443,4 @@ class Music(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Music(bot))
+    log.info("Music cog loaded.")

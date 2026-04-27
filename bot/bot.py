@@ -26,7 +26,27 @@ bot = commands.Bot(command_prefix="m/", intents=intents, help_command=None)
 @bot.event
 async def setup_hook():
     from music import setup as setup_music
+    from games import setup as setup_games
     await setup_music(bot)
+    await setup_games(bot)
+    log.info("All cogs loaded.")
+
+
+@bot.event
+async def on_command_error(ctx: commands.Context, error: commands.CommandError):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"Argumen kurang: `{error.param.name}`. Cek `m/help`.")
+        return
+    if isinstance(error, commands.BadArgument):
+        await ctx.send(f"Argumen salah: {error}")
+        return
+    log.exception("Prefix command error", exc_info=error)
+    try:
+        await ctx.send(f"Error: `{error}`")
+    except discord.HTTPException:
+        pass
 
 
 TRUTHS = [
