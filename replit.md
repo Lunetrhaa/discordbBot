@@ -28,9 +28,12 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ## Discord Bot
 
-- Code: `bot/bot.py` (Python 3.11, `discord.py`)
+- Code: `bot/bot.py` (general + Truth or Dare), `bot/music.py` (music cog)
+- Stack: Python 3.11, `discord.py`, `yt-dlp`, `PyNaCl`, system `ffmpeg`
 - Workflow: `Discord Bot` — runs `python -u bot/bot.py`
 - Token secret: `DISCORD_BOT_TOKEN`
-- Default command prefix: `!` (override via `DISCORD_COMMAND_PREFIX`)
-- Built-in commands: `help`, `ping`, `hello`, `say`, `roll`, `flip`, `choose`, `avatar`, `userinfo`, `serverinfo`, `clear`
+- Slash commands (Indonesian): `/help`, `/ping`, `/hello`, `/say`, `/roll`, `/flip`, `/choose`, `/avatar`, `/userinfo`, `/serverinfo`, `/clear`, `/tod`
+- Music prefix commands (`m/` to avoid clashing with Jockie Music):
+  `m/play`, `m/skip`, `m/stop`, `m/pause`, `m/resume`, `m/queue`, `m/nowplaying`,
+  `m/volume`, `m/loop`, `m/clear`, `m/leave`, `m/help`
 - Requires "Message Content Intent" enabled in the Discord Developer Portal.

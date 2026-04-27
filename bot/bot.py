@@ -20,7 +20,13 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
+bot = commands.Bot(command_prefix="m/", intents=intents, help_command=None)
+
+
+@bot.event
+async def setup_hook():
+    from music import setup as setup_music
+    await setup_music(bot)
 
 
 TRUTHS = [
