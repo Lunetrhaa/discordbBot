@@ -143,14 +143,23 @@ class TriviaView(discord.ui.View):
         btn = discord.ui.Button(label=label[:80], style=discord.ButtonStyle.secondary)
 
         async def cb(interaction: discord.Interaction):
+            import stats as stats_mod
             if interaction.user.id in self.answered:
                 await interaction.response.send_message("Kamu udah jawab!", ephemeral=True)
                 return
             self.answered.add(interaction.user.id)
             if label == self.correct:
                 self.winners.append(interaction.user.display_name)
-                await interaction.response.send_message("✅ Bener!", ephemeral=True)
+                if interaction.guild:
+                    await stats_mod.add_points(
+                        interaction.guild.id, interaction.user.id, 10, "trivia"
+                    )
+                await interaction.response.send_message("✅ Bener! +10 poin", ephemeral=True)
             else:
+                if interaction.guild:
+                    await stats_mod.add_loss(
+                        interaction.guild.id, interaction.user.id, "trivia"
+                    )
                 await interaction.response.send_message(f"❌ Salah! Jawaban: **{self.correct}**", ephemeral=True)
 
         btn.callback = cb
@@ -257,8 +266,14 @@ class NumberGuessModal(discord.ui.Modal, title="Tebak angka 1-100"):
             for c in v.children:
                 if isinstance(c, discord.ui.Button):
                     c.disabled = True
+            reward = max(3, 17 - 2 * v.tries)
+            if interaction.guild:
+                import stats as stats_mod
+                await stats_mod.add_points(
+                    interaction.guild.id, interaction.user.id, reward, "numberguess"
+                )
             await interaction.response.send_message(
-                f"🎯 **{interaction.user.display_name}** nebak bener di percobaan ke-{v.tries}! Angkanya **{v.target}**."
+                f"🎯 **{interaction.user.display_name}** nebak bener di percobaan ke-{v.tries}! Angkanya **{v.target}**. (+{reward} poin)"
             )
             v.stop()
             return
@@ -266,6 +281,11 @@ class NumberGuessModal(discord.ui.Modal, title="Tebak angka 1-100"):
             for c in v.children:
                 if isinstance(c, discord.ui.Button):
                     c.disabled = True
+            if interaction.guild:
+                import stats as stats_mod
+                await stats_mod.add_loss(
+                    interaction.guild.id, interaction.user.id, "numberguess"
+                )
             await interaction.response.send_message(
                 f"💀 Game over. Angkanya **{v.target}**.", ephemeral=False
             )
@@ -314,7 +334,17 @@ class TicTacToeView(discord.ui.View):
                 if winner == -1:
                     content = "🤝 Seri!"
                 else:
-                    content = f"🏆 **{self.players[winner].display_name}** menang!"
+                    win_user = self.players[winner]
+                    content = f"🏆 **{win_user.display_name}** menang! +10 poin"
+                    if interaction.guild:
+                        import stats as stats_mod
+                        await stats_mod.add_points(
+                            interaction.guild.id, win_user.id, 10, "tictactoe"
+                        )
+                        loser = self.players[1 - winner]
+                        await stats_mod.add_loss(
+                            interaction.guild.id, loser.id, "tictactoe"
+                        )
                 self.stop()
             else:
                 self.turn = 1 - self.turn
@@ -359,8 +389,13 @@ class ReactionTestView(discord.ui.View):
         for c in self.children:
             if isinstance(c, discord.ui.Button):
                 c.disabled = True
+        if interaction.guild:
+            import stats as stats_mod
+            await stats_mod.add_points(
+                interaction.guild.id, interaction.user.id, 8, "reactiontest"
+            )
         await interaction.response.edit_message(
-            content=f"⚡ **{interaction.user.display_name}** menang! Waktu reaksi: `{elapsed:.3f}s`",
+            content=f"⚡ **{interaction.user.display_name}** menang! Waktu reaksi: `{elapsed:.3f}s` (+8 poin)",
             view=self,
         )
         self.stop()
@@ -401,8 +436,21 @@ class HigherLowerView(discord.ui.View):
             for c in self.children:
                 if isinstance(c, discord.ui.Button):
                     c.disabled = True
+            reward = self.score
+            extra = ""
+            if reward > 0 and interaction.guild:
+                import stats as stats_mod
+                await stats_mod.add_points(
+                    interaction.guild.id, interaction.user.id, reward, "higherlower"
+                )
+                extra = f" (+{reward} poin)"
+            elif interaction.guild:
+                import stats as stats_mod
+                await stats_mod.add_loss(
+                    interaction.guild.id, interaction.user.id, "higherlower"
+                )
             await interaction.response.edit_message(
-                content=f"❌ Kartu: **{self._card(nxt)}**. Game over! Skor akhir: **{self.score}**",
+                content=f"❌ Kartu: **{self._card(nxt)}**. Game over! Skor akhir: **{self.score}**{extra}",
                 view=self,
             )
             self.stop()
@@ -551,7 +599,12 @@ class Games(commands.Cog):
 
         try:
             msg = await self.bot.wait_for("message", timeout=30.0, check=check)
-            await interaction.followup.send(f"✅ **{msg.author.display_name}** bener! Jawaban: **{word}**")
+            if interaction.guild:
+                import stats as stats_mod
+                await stats_mod.add_points(
+                    interaction.guild.id, msg.author.id, 10, "scramble"
+                )
+            await interaction.followup.send(f"✅ **{msg.author.display_name}** bener! Jawaban: **{word}** (+10 poin)")
         except asyncio.TimeoutError:
             await interaction.followup.send(f"⏰ Waktu habis. Jawaban: **{word}**")
 
@@ -574,7 +627,12 @@ class Games(commands.Cog):
 
         try:
             msg = await self.bot.wait_for("message", timeout=15.0, check=check)
-            await interaction.followup.send(f"✅ **{msg.author.display_name}** bener! = **{answer}**")
+            if interaction.guild:
+                import stats as stats_mod
+                await stats_mod.add_points(
+                    interaction.guild.id, msg.author.id, 5, "math"
+                )
+            await interaction.followup.send(f"✅ **{msg.author.display_name}** bener! = **{answer}** (+5 poin)")
         except asyncio.TimeoutError:
             await interaction.followup.send(f"⏰ Waktu habis. = **{answer}**")
 

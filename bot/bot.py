@@ -28,9 +28,11 @@ async def setup_hook():
     from music import setup as setup_music
     from games import setup as setup_games
     from ai_cog import setup as setup_ai
+    from quiz import setup as setup_quiz
     await setup_music(bot)
     await setup_games(bot)
     await setup_ai(bot)
+    await setup_quiz(bot)
     log.info("All cogs loaded.")
 
 
