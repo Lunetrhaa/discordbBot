@@ -157,7 +157,7 @@ class TruthOrDareView(discord.ui.View):
 async def on_ready():
     log.info("Logged in as %s (id=%s)", bot.user, bot.user.id if bot.user else "?")
     log.info("Connected to %d guild(s).", len(bot.guilds))
-    activity = discord.Game(name="Lunethra.gg | /help")
+    activity = discord.Game(name="Lunethra | /help")
     await bot.change_presence(status=discord.Status.online, activity=activity)
     for guild in bot.guilds:
         try:
