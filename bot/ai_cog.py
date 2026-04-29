@@ -46,6 +46,52 @@ class AICog(commands.Cog):
             raise RuntimeError("No image returned")
         return base64.b64decode(b64)
 
+    @app_commands.command(name="chat", description="Ngobrol bareng Lunethra (AI).")
+    @app_commands.describe(message="Pesan kamu")
+    async def chat(self, interaction: discord.Interaction, message: str):
+        if len(message) > 1500:
+            await interaction.response.send_message("Pesan maks 1500 karakter.", ephemeral=True)
+            return
+        await interaction.response.defer(thinking=True)
+        try:
+            resp = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "Kamu adalah Lunethra, bot Discord yang ramah dan santai. "
+                                "Jawab dalam Bahasa Indonesia kasual (bisa campur sedikit slang/Inggris). "
+                                "Singkat, hangat, kadang sedikit lucu. Maksimal 200 kata. "
+                                "Jangan kasih disclaimer panjang."
+                            ),
+                        },
+                        {"role": "user", "content": message},
+                    ],
+                    max_tokens=500,
+                ),
+                timeout=30,
+            )
+            reply = resp.choices[0].message.content or "..."
+        except asyncio.TimeoutError:
+            await interaction.followup.send("⏱️ Timeout. Coba lagi ya.")
+            return
+        except Exception as e:
+            log.exception("chat failed")
+            await interaction.followup.send(f"Error: `{e}`")
+            return
+        embed = discord.Embed(
+            description=reply[:4000],
+            color=discord.Color.from_str("#5865F2"),
+        )
+        embed.set_author(
+            name=f"💬 Tanya: {message[:100]}",
+            icon_url=interaction.user.display_avatar.url,
+        )
+        embed.set_footer(text="Lunethra AI")
+        await interaction.followup.send(embed=embed)
+
     @app_commands.command(name="imagine", description="Bikin gambar dari prompt teks pakai AI.")
     @app_commands.describe(
         prompt="Deskripsi gambar yang mau dibikin",

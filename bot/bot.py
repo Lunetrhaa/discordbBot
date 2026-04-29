@@ -19,6 +19,7 @@ if not TOKEN:
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.voice_states = True
 
 bot = commands.Bot(command_prefix="m/", intents=intents, help_command=None)
 
@@ -29,10 +30,22 @@ async def setup_hook():
     from games import setup as setup_games
     from ai_cog import setup as setup_ai
     from quiz import setup as setup_quiz
+    from levels import setup as setup_levels
+    from social import setup as setup_social
+    from downloader import setup as setup_downloader
+    from sholat import setup as setup_sholat
+    from welcome import setup as setup_welcome
+    from voicemaster import setup as setup_voicemaster
     await setup_music(bot)
     await setup_games(bot)
     await setup_ai(bot)
     await setup_quiz(bot)
+    await setup_levels(bot)
+    await setup_social(bot)
+    await setup_downloader(bot)
+    await setup_sholat(bot)
+    await setup_welcome(bot)
+    await setup_voicemaster(bot)
     log.info("All cogs loaded.")
 
 
