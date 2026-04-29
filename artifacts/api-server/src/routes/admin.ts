@@ -23,6 +23,10 @@ const DEFAULT_GUILD = {
   voicemaster_create_channel: null as string | null,
   voicemaster_category: null as string | null,
   confess_channel: null as string | null,
+  verify_channel: null as string | null,
+  verify_message_id: null as string | null,
+  verify_emoji: "✅",
+  verify_role: null as string | null,
 };
 
 type GuildCfg = typeof DEFAULT_GUILD;
@@ -241,6 +245,15 @@ const ADMIN_HTML = `<!doctype html>
     <div class="row"><label>Confess Channel ID</label><input id="confess_channel" /></div>
   </section>
 
+  <section class="card" id="verifyCard" style="display:none">
+    <h2>8. React-to-Verify</h2>
+    <div class="row"><label>Verify Channel ID</label><input id="verify_channel" /></div>
+    <div class="row"><label>Message ID</label><input id="verify_message_id" placeholder="Auto-isi setelah pakai /setverify" /></div>
+    <div class="row"><label>Emoji</label><input id="verify_emoji" placeholder="✅" /></div>
+    <div class="row"><label>Role ID</label><input id="verify_role" /></div>
+    <small>Lebih gampang pakai <code>/setverify</code> di Discord — message-nya auto-dibikin & ID-nya otomatis ke-set.</small>
+  </section>
+
   <section class="card" id="saveCard" style="display:none">
     <button id="saveBtn">💾 Simpan Semua</button>
     <button class="secondary" id="reloadBtn">↻ Muat Ulang</button>
@@ -278,8 +291,9 @@ const $ = (id) => document.getElementById(id);
 const fields = ["welcome_channel","welcome_image","welcome_text","welcome_color",
   "goodbye_channel","goodbye_image","goodbye_text","goodbye_color",
   "level_up_enabled","level_up_channel","sholat_enabled","sholat_channel",
-  "voicemaster_create_channel","voicemaster_category","confess_channel"];
-const cards = ["configCard","goodbyeCard","levelCard","sholatCard","vmCard","confessCard","saveCard"];
+  "voicemaster_create_channel","voicemaster_category","confess_channel",
+  "verify_channel","verify_message_id","verify_emoji","verify_role"];
+const cards = ["configCard","goodbyeCard","levelCard","sholatCard","vmCard","confessCard","verifyCard","saveCard"];
 
 function showStatus(msg, ok=true) {
   const s = $("status"); s.textContent = msg; s.className = "status " + (ok?"ok":"err");

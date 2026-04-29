@@ -36,6 +36,7 @@ async def setup_hook():
     from sholat import setup as setup_sholat
     from welcome import setup as setup_welcome
     from voicemaster import setup as setup_voicemaster
+    from verify import setup as setup_verify
     await setup_music(bot)
     await setup_games(bot)
     await setup_ai(bot)
@@ -46,6 +47,7 @@ async def setup_hook():
     await setup_sholat(bot)
     await setup_welcome(bot)
     await setup_voicemaster(bot)
+    await setup_verify(bot)
     log.info("All cogs loaded.")
 
 

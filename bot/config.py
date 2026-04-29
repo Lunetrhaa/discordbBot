@@ -23,6 +23,10 @@ DEFAULT_GUILD = {
     "voicemaster_create_channel": None,
     "voicemaster_category": None,
     "confess_channel": None,
+    "verify_channel": None,
+    "verify_message_id": None,
+    "verify_emoji": "✅",
+    "verify_role": None,
 }
 
 

@@ -1,0 +1,21 @@
+{
+  "guilds": {
+    "961272385120641106": {
+      "welcome_channel": "1287879451421577288",
+      "welcome_image": null,
+      "welcome_text": "Selamat datang di **{server}**, {user}! Kamu member ke-**{count}**.",
+      "welcome_color": "#5865F2",
+      "goodbye_channel": "1488175026330013706",
+      "goodbye_image": null,
+      "goodbye_text": "Sampai jumpa, **{user}**. 😢",
+      "goodbye_color": "#ED4245",
+      "level_up_channel": null,
+      "level_up_enabled": true,
+      "sholat_channel": null,
+      "sholat_enabled": true,
+      "voicemaster_create_channel": null,
+      "voicemaster_category": null,
+      "confess_channel": null
+    }
+  }
+}
