@@ -8,7 +8,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-import config as cfg
+from . import config as cfg
 
 log = logging.getLogger("bot.sholat")
 
