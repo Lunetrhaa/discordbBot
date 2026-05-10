@@ -36,7 +36,6 @@ async def setup_hook():
     from welcome import setup as setup_welcome
     from voicemaster import setup as setup_voicemaster
     from verify import setup as setup_verify
-    await setup_music(bot)
     await setup_games(bot)
     await setup_ai(bot)
     await setup_quiz(bot)
