@@ -5,8 +5,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-import quiz_data
-import stats as stats_mod
+from . import quiz_data
+from . import stats as stats_mod
 
 log = logging.getLogger("bot.quiz")
 
