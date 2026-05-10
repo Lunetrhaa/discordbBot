@@ -4,3 +4,4 @@ PyNaCl
 openai
 yt-dlp
 spotipy
+wavelink
