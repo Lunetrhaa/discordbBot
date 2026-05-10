@@ -25,6 +25,7 @@ bot = commands.Bot(command_prefix="m/", intents=intents, help_command=None)
 
 @bot.event
 async def setup_hook():
+    from .music import setup as setup_music
     from .games import setup as setup_games
     from .ai_cog import setup as setup_ai
     from .quiz import setup as setup_quiz
@@ -35,6 +36,7 @@ async def setup_hook():
     from .welcome import setup as setup_welcome
     from .voicemaster import setup as setup_voicemaster
     from .verify import setup as setup_verify
+    await setup_music(bot)
     await setup_games(bot)
     await setup_ai(bot)
     await setup_quiz(bot)
