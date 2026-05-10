@@ -7,7 +7,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from . import config as cfg
-import stats as stats_mod
+from . import stats as stats_mod
 
 log = logging.getLogger("bot.levels")
 
